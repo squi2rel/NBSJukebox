@@ -1,0 +1,13 @@
+name: NBSJukebox
+version: '1.0'
+main: com.github.squi2rel.nbs.NBSJukebox
+api-version: '1.21'
+authors: [ squi2rel ]
+website: https://github.com/squi2rel
+load: STARTUP
+
+commands:
+  nbswrite:
+    permission: op
+  nbsreload:
+    permission: op
