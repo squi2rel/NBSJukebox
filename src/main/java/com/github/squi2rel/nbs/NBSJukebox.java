@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.entity.JukeboxBlockEntity;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
+import org.bukkit.ChatColor;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.command.PluginCommand;
@@ -47,6 +48,7 @@ public final class NBSJukebox extends JavaPlugin implements Listener {
     public static final NamespacedKey ID_KEY = Objects.requireNonNull(NamespacedKey.fromString(ID));
     public static final NamespacedKey PLAYTIME_KEY = Objects.requireNonNull(NamespacedKey.fromString(PLAYTIME));
 
+    @SuppressWarnings("deprecation")
     @Override
     public void onEnable() {
         // Plugin startup logic
@@ -66,6 +68,7 @@ public final class NBSJukebox extends JavaPlugin implements Listener {
                 playable.setShowInTooltip(false);
                 meta.setJukeboxPlayable(playable);
             }
+            meta.setLore(List.of(ChatColor.GRAY + key));
             PersistentDataContainer container = meta.getPersistentDataContainer();
             container.set(ID_KEY, PersistentDataType.STRING, key);
             item.setItemMeta(meta);

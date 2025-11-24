@@ -4,8 +4,8 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
+import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -49,8 +49,8 @@ public class NMSUtil {
 
     public static void sendNowPlayingPacket(LevelAccessor level, BlockPos pos, String name) {
         List<ServerPlayer> players = NMSUtil.getNearbyPlayers(level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 64);
-        ClientboundSetActionBarTextPacket packet = new ClientboundSetActionBarTextPacket(
-                Component.translatable("record.nowPlaying", Component.literal(name)).withStyle(ChatFormatting.LIGHT_PURPLE)
+        ClientboundSystemChatPacket packet = new ClientboundSystemChatPacket(
+                Component.translatable("record.nowPlaying", Component.literal(name)).withStyle(ChatFormatting.GOLD), true
         );
         for (ServerPlayer player : players) player.connection.send(packet);
     }
