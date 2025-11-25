@@ -13,6 +13,8 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.phys.AABB;
 import org.bukkit.Location;
+import org.bukkit.Sound;
+import org.bukkit.craftbukkit.CraftSound;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 
@@ -59,6 +61,14 @@ public class NMSUtil {
         if (players == null || players.isEmpty() || id >= INSTRUMENTS.length) return;
         ClientboundSoundPacket packet = new ClientboundSoundPacket(
                 INSTRUMENTS[id], SoundSource.RECORDS, pos.getX(), pos.getY(), pos.getZ(), volume, pitch, RANDOM.nextLong()
+        );
+        for (Player player : players) ((CraftPlayer) player).getHandle().connection.send(packet);
+    }
+
+    public static void sendNotePacket(List<Player> players, Sound sound, Location pos, float volume, float pitch) {
+        if (players == null || players.isEmpty()) return;
+        ClientboundSoundPacket packet = new ClientboundSoundPacket(
+                CraftSound.bukkitToMinecraftHolder(sound), SoundSource.RECORDS, pos.getX(), pos.getY(), pos.getZ(), volume, pitch, RANDOM.nextLong()
         );
         for (Player player : players) ((CraftPlayer) player).getHandle().connection.send(packet);
     }

@@ -3,6 +3,7 @@ package com.github.squi2rel.nbs;
 import com.github.squi2rel.nbs.nbs.NBSReader;
 import com.github.squi2rel.nbs.nbs.NBSSong;
 import com.github.squi2rel.nbs.nms.NBSJukeboxBlockEntity;
+import com.github.squi2rel.nbs.util.NBSUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.LevelAccessor;
@@ -13,6 +14,7 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.bukkit.ChatColor;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.craftbukkit.CraftChunk;
@@ -32,6 +34,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -41,12 +44,14 @@ import java.util.stream.Stream;
 @SuppressWarnings("UnstableApiUsage")
 public final class NBSJukebox extends JavaPlugin implements Listener {
 
-    public static HashMap<String, NBSSong> registry = new HashMap<>();
+    public static Map<String, NBSSong> registry = new HashMap<>();
 
     public static final String ID = "nbsjukebox:song";
     public static final String PLAYTIME = "nbsjukebox:playtime";
     public static final NamespacedKey ID_KEY = Objects.requireNonNull(NamespacedKey.fromString(ID));
     public static final NamespacedKey PLAYTIME_KEY = Objects.requireNonNull(NamespacedKey.fromString(PLAYTIME));
+
+    public static Map<String, Sound> soundsMap = new HashMap<>();
 
     @SuppressWarnings("deprecation")
     @Override
@@ -85,6 +90,13 @@ public final class NBSJukebox extends JavaPlugin implements Listener {
         });
 
         loadSongs();
+
+        try (InputStream in = getResource("sounds.json")) {
+            soundsMap = NBSUtil.buildReverseMap(in);
+        } catch (IOException e) {
+            getLogger().log(Level.WARNING, "Failed to load sounds.json", e);
+            soundsMap = new HashMap<>();
+        }
 
         for (World world : getServer().getWorlds()) {
             ServerLevel level = ((CraftWorld) world).getHandle();

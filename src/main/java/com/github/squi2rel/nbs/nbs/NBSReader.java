@@ -2,36 +2,37 @@ package com.github.squi2rel.nbs.nbs;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class NBSReader {
     private static Header readHeader(LEDataInput in) throws IOException {
         Header h = new Header();
-        short firstTwoBytes = in.readShortLE();
+        short firstTwoBytes = in.readShort();
         if (firstTwoBytes == 0) {
             h.version = in.readUnsignedByte();
             h.vanillaInstrumentCount = in.readUnsignedByte();
         }
-        if (h.version >= 3) h.songLength = in.readShortLE();
-        h.layerCount = in.readShortLE();
+        if (h.version >= 3) h.songLength = in.readShort();
+        h.layerCount = in.readShort();
         h.name = in.readString();
         h.author = in.readString();
         h.originalAuthor = in.readString();
         h.description = in.readString();
-        h.tempo = in.readShortLE();
+        h.tempo = in.readShort();
         h.autoSaving = in.readUnsignedByte();
         h.autoSavingDuration = in.readUnsignedByte();
         h.timeSignature = in.readUnsignedByte();
-        h.minutesSpent = in.readIntLE();
-        h.leftClicks = in.readIntLE();
-        h.rightClicks = in.readIntLE();
-        h.noteBlocksAdded = in.readIntLE();
-        h.noteBlocksRemoved = in.readIntLE();
+        h.minutesSpent = in.readInt();
+        h.leftClicks = in.readInt();
+        h.rightClicks = in.readInt();
+        h.noteBlocksAdded = in.readInt();
+        h.noteBlocksRemoved = in.readInt();
         h.midiSchematic = in.readString();
         if (h.version >= 4) {
             h.loopOn = in.readUnsignedByte();
             h.maxLoopCount = in.readUnsignedByte();
-            h.loopStartTick = in.readShortLE();
+            h.loopStartTick = in.readShort();
         }
         return h;
     }
@@ -41,19 +42,19 @@ public class NBSReader {
         int tick = -1;
         boolean newer = h.version >= 4;
         while (true) {
-            short jumpTick = in.readShortLE();
+            short jumpTick = in.readShort();
             if (jumpTick == 0) break;
             tick += jumpTick;
             int layer = -1;
             while (true) {
-                short jumpLayer = in.readShortLE();
+                short jumpLayer = in.readShort();
                 if (jumpLayer == 0) break;
                 layer += jumpLayer;
                 NBSNote n = readNote(in, tick, layer);
                 if (newer) {
                     n.velocity = in.readByte();
                     n.panning = in.readByte();
-                    n.pitch = in.readShortLE();
+                    n.pitch = in.readShort();
                 }
                 notes.add(n);
             }
@@ -73,7 +74,7 @@ public class NBSReader {
     private static List<NBSLayer> readLayers(LEDataInput in, Header h) throws IOException {
         int size = h.layerCount;
         int version = h.version;
-        ArrayList<NBSLayer> layers = new ArrayList<>(size);
+        List<NBSLayer> layers = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             layers.add(readLayer(in, version));
         }
@@ -89,45 +90,77 @@ public class NBSReader {
         return l;
     }
 
+    private static List<NBSInstrument> readInstruments(LEDataInput in) throws IOException {
+        int size = in.readUnsignedByte();
+        List<NBSInstrument> instruments = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+            instruments.add(readInstrument(in));
+        }
+        return instruments;
+    }
+
+    private static NBSInstrument readInstrument(LEDataInput in) throws IOException {
+        NBSInstrument i = new NBSInstrument();
+        i.instrumentName = in.readString();
+        i.soundFile = in.readString();
+        i.soundKey = in.readByte();
+        i.pressPianoKey = in.readByte();
+        return i;
+    }
+
     public static NBSSong parse(File path) throws IOException {
         try (LEDataInput in = new LEDataInput(new FileInputStream(path))) {
             Header h = readHeader(in);
             List<NBSNote> notes = readNotes(in, h);
             List<NBSLayer> layers = readLayers(in, h);
+            List<NBSInstrument> instruments = readInstruments(in);
             double tempo = h.tempo / 100.0;
             int lastTick = notes.stream().mapToInt(n -> n.tick).max().orElse(0);
             long duration = Math.round((lastTick + 1) / tempo * 1000);
-            return new NBSSong(path.getName(), tempo, notes, layers, duration);
+            return new NBSSong(path.getName(), tempo, notes, layers, instruments, duration);
         }
     }
 
     public static class LEDataInput implements AutoCloseable {
         private final DataInputStream in;
+
         public LEDataInput(InputStream is) {
             this.in = new DataInputStream(new BufferedInputStream(is));
         }
-        public byte readByte() throws IOException { return in.readByte(); }
-        public int readUnsignedByte() throws IOException { return in.readUnsignedByte(); }
-        public short readShortLE() throws IOException {
+
+        public byte readByte() throws IOException {
+            return in.readByte();
+        }
+
+        public int readUnsignedByte() throws IOException {
+            return in.readUnsignedByte();
+        }
+
+        public short readShort() throws IOException {
             int low = in.readUnsignedByte();
             int high = in.readUnsignedByte();
-            return (short)((high << 8) | low);
+            return (short) ((high << 8) | low);
         }
-        public int readIntLE() throws IOException {
+
+        public int readInt() throws IOException {
             int b0 = in.readUnsignedByte();
             int b1 = in.readUnsignedByte();
             int b2 = in.readUnsignedByte();
             int b3 = in.readUnsignedByte();
             return (b3 << 24) | (b2 << 16) | (b1 << 8) | b0;
         }
+
         public String readString() throws IOException {
-            int len = readIntLE();
+            int len = readInt();
             if (len <= 0) return "";
             byte[] buf = new byte[len];
             in.readFully(buf);
             return new String(buf, StandardCharsets.UTF_8);
         }
-        public void close() throws IOException { in.close(); }
+
+        public void close() throws IOException {
+            in.close();
+        }
     }
 
     public static class Header {
