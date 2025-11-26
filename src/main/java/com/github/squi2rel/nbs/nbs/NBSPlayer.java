@@ -146,7 +146,7 @@ public class NBSPlayer implements Runnable {
     public void start() {
         if (playing) return;
         playing = true;
-        thread = new Thread(this, "NBS-Player-Thread");
+        thread = new Thread(this, "NBS-Player-Thread{%s}".formatted(location));
         thread.start();
     }
 
