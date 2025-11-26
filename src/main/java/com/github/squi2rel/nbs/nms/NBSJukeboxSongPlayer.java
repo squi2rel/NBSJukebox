@@ -59,20 +59,14 @@ public class NBSJukeboxSongPlayer extends JukeboxSongPlayer {
         super.setSongWithoutPlaying(song, ticksSinceSongStarted);
     }
 
-    @SuppressWarnings("ConstantValue")
-    @Override
-    public void play(@NotNull LevelAccessor level, @NotNull Holder<JukeboxSong> song) {
-        JukeboxSong value = song.value();
-        if (value.soundEvent() == null) {
-            NBSSong nbs = NBSJukebox.registry.get(value.description().getString());
-            if (player != null) player.stop();
-            player = new NBSPlayer(nbs);
-            player.setLocation(new Location(null, blockPos.getX(), blockPos.getY(), blockPos.getZ()));
-            player.start();
-            onSongChanged.notifyChange();
-            return;
-        }
-        super.play(level, song);
+    public void playNBS(LevelAccessor level, String name) {
+        NBSSong nbs = NBSJukebox.registry.get(name);
+        if (player != null) player.stop();
+        player = new NBSPlayer(nbs);
+        player.setLocation(new Location(null, blockPos.getX(), blockPos.getY(), blockPos.getZ()));
+        updatePlayers(level);
+        player.start();
+        onSongChanged.notifyChange();
     }
 
     public void setProgress(long millis) {
@@ -104,15 +98,7 @@ public class NBSJukeboxSongPlayer extends JukeboxSongPlayer {
             if (!player.isPlaying()) {
                 this.stop(level, state);
             } else {
-                double x = blockPos.getX() + 0.5;
-                double y = blockPos.getY() + 0.5;
-                double z = blockPos.getZ() + 0.5;
-
-                double r = 64;
-
-                player.setPlayers(NMSUtil.getNearbyPlayers(level, x, y, z, r).stream()
-                        .map(ServerPlayer::getBukkitEntity)
-                        .collect(Collectors.toUnmodifiableList()));
+                updatePlayers(level);
 
                 if (STARTED.get(this) % 20L == 0L) {
                     level.gameEvent(GameEvent.JUKEBOX_PLAY, blockPos, GameEvent.Context.of(state));
@@ -124,5 +110,11 @@ public class NBSJukeboxSongPlayer extends JukeboxSongPlayer {
             return;
         }
         super.tick(level, state);
+    }
+
+    private void updatePlayers(LevelAccessor level) {
+        player.setPlayers(NMSUtil.getNearbyPlayers(level, blockPos.getX() + 0.5, blockPos.getY() + 0.5, blockPos.getZ() + 0.5, 64).stream()
+                .map(ServerPlayer::getBukkitEntity)
+                .collect(Collectors.toUnmodifiableList()));
     }
 }

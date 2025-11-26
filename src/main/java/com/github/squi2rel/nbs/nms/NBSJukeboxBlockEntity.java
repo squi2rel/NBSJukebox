@@ -9,9 +9,7 @@ import net.minecraft.core.*;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.LongTag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.JukeboxSong;
 import net.minecraft.world.item.JukeboxSongPlayer;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.JukeboxBlock;
@@ -81,10 +79,9 @@ public class NBSJukeboxBlockEntity extends JukeboxBlockEntity {
         }
     }
 
-    @SuppressWarnings("DataFlowIssue")
     private void playNBS(NBSSong song) {
         String name = song.fileName();
-        player.play(Objects.requireNonNull(level), new Holder.Direct<>(new JukeboxSong(null, Component.literal(name.substring(0, name.length() - 4)), song.duration() / 1000f, 15)));
+        player.playNBS(level, name.substring(0, name.length() - 4));
     }
 
     private static String getNBSSongName(ItemStack stack) {

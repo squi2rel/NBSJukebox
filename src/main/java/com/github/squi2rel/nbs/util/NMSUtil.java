@@ -1,15 +1,15 @@
 package com.github.squi2rel.nbs.util;
 
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
-import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.phys.AABB;
 import org.bukkit.Location;
@@ -20,6 +20,7 @@ import org.bukkit.entity.Player;
 
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.locks.LockSupport;
 
 public class NMSUtil {
     private static final Random RANDOM = new Random();
@@ -51,10 +52,29 @@ public class NMSUtil {
 
     public static void sendNowPlayingPacket(LevelAccessor level, BlockPos pos, String name) {
         List<ServerPlayer> players = NMSUtil.getNearbyPlayers(level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 64);
-        ClientboundSystemChatPacket packet = new ClientboundSystemChatPacket(
-                Component.translatable("record.nowPlaying", Component.literal(name)).withStyle(ChatFormatting.GOLD), true
-        );
-        for (ServerPlayer player : players) player.connection.send(packet);
+        new Thread(() -> {
+            long start = System.currentTimeMillis();
+            long sleep = 33333332L;
+            long next = System.nanoTime() + sleep;
+            while (true) {
+                long now = System.currentTimeMillis();
+                if (now - start > 3000) break;
+                float f = 60 - (now - start) / 50f;
+                int i = (int) (f * 255 / 20f);
+                if (i > 255) i = 255;
+                int color = Mth.hsvToArgb(f / 50f, 0.7f, 0.6f, Math.max(0, i));
+                ClientboundSetActionBarTextPacket packet = new ClientboundSetActionBarTextPacket(
+                        Component.translatable("record.nowPlaying", Component.literal(name)).withColor(color)
+                );
+                for (ServerPlayer player : players) player.connection.send(packet);
+                long currentTimeNs = System.nanoTime();
+                long waitNs = next - currentTimeNs;
+                if (waitNs > 0) {
+                    LockSupport.parkNanos(waitNs);
+                }
+                next += sleep;
+            }
+        }).start();
     }
 
     public static void sendNotePacket(List<Player> players, int id, Location pos, float volume, float pitch) {

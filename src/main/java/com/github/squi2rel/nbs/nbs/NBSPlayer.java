@@ -14,17 +14,16 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
 public class NBSPlayer implements Runnable {
-
     private final NBSNote[] notes;
     private final NBSLayer[] layers;
     private final Instrument[] instruments;
     private final double ticksPerSecond;
     private final int ticks;
-    private final AtomicBoolean playing = new AtomicBoolean(false);
-    private final AtomicBoolean paused = new AtomicBoolean(false);
+    private volatile boolean playing = false;
+    private volatile boolean paused = false;
+    private volatile long pauseStart;
     private final AtomicBoolean skipping = new AtomicBoolean(false);
     private final AtomicLong startTime = new AtomicLong();
-    private final AtomicLong pauseStart = new AtomicLong();
     private Thread thread;
 
     private List<Player> players;
@@ -53,20 +52,21 @@ public class NBSPlayer implements Runnable {
 
     @Override
     public void run() {
+        startTime.set(System.nanoTime());
+
         long tickDurationNanos = (long) (1_000_000_000.0 / ticksPerSecond);
 
         int tick = 0;
         int idx = 0;
         int size = notes.length;
 
-        while (playing.get()) {
-            while (paused.get()) {
+        while (playing) {
+            while (paused) {
                 LockSupport.park();
-                if (!playing.get()) return;
-                startTime.getAndAdd(System.nanoTime() - pauseStart.get());
+                if (!playing) return;
             }
 
-            if (skipping.get()) {
+            if (skipping.compareAndSet(true, false)) {
                 tick = (int) ((System.nanoTime() - startTime.get()) / tickDurationNanos);
                 int low = 0;
                 int high = size;
@@ -80,7 +80,6 @@ public class NBSPlayer implements Runnable {
                     }
                 }
                 idx = low;
-                skipping.set(false);
             }
 
             long expectedTime = startTime.get() + tick * tickDurationNanos;
@@ -124,7 +123,7 @@ public class NBSPlayer implements Runnable {
 
             if (++tick > ticks) break;
         }
-        playing.set(false);
+        playing = false;
     }
 
     public void setPlayers(List<Player> players) {
@@ -136,21 +135,23 @@ public class NBSPlayer implements Runnable {
     }
 
     public void setProgress(long millis) {
-        pauseStart.set(0);
-        startTime.set(System.nanoTime() - millis * 1000000);
+        if (paused) {
+            startTime.set(pauseStart - millis * 1000000);
+        } else {
+            startTime.set(System.nanoTime() - millis * 1000000);
+        }
         skipping.set(true);
     }
 
     public void start() {
-        if (playing.get()) return;
-        startTime.set(System.nanoTime());
-        playing.set(true);
+        if (playing) return;
+        playing = true;
         thread = new Thread(this, "NBS-Player-Thread");
         thread.start();
     }
 
     public void stop() {
-        playing.set(false);
+        playing = false;
         if (thread != null) {
             thread.interrupt();
             thread = null;
@@ -158,26 +159,27 @@ public class NBSPlayer implements Runnable {
     }
 
     public boolean isPlaying() {
-        return playing.get();
+        return playing;
     }
 
     public void pause() {
-        pauseStart.set(System.nanoTime());
-        paused.set(true);
+        pauseStart = System.nanoTime();
+        paused = true;
     }
 
     public void resume() {
-        paused.set(false);
+        startTime.getAndAdd(System.nanoTime() - pauseStart);
+        paused = false;
         if (thread != null) LockSupport.unpark(thread);
     }
 
     public boolean isPaused() {
-        return paused.get();
+        return paused;
     }
 
     public long getProgress() {
-        if (!playing.get()) return 0;
-        if (paused.get()) return pauseStart.get() - startTime.get();
+        if (!playing) return 0;
+        if (paused) return pauseStart - startTime.get();
         return (System.nanoTime() - startTime.get()) / 1000000;
     }
 
