@@ -47,8 +47,7 @@ public class NBSJukeboxBlockEntity extends JukeboxBlockEntity {
 
     @Override
     public int getComparatorOutput() {
-        if (player != null && player.isPlaying()) return 15;
-        return super.getComparatorOutput();
+        return player.isPlayingNBS() ? 15 : super.getComparatorOutput();
     }
 
     @Override
