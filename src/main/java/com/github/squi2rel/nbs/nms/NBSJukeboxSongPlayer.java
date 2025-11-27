@@ -63,7 +63,7 @@ public class NBSJukeboxSongPlayer extends JukeboxSongPlayer {
         NBSSong nbs = NBSJukebox.registry.get(name);
         if (player != null) player.stop();
         player = new NBSPlayer(nbs);
-        player.setLocation(new Location(null, blockPos.getX(), blockPos.getY(), blockPos.getZ()));
+        player.setLocation(new Location(null, blockPos.getX() + 0.5, blockPos.getY() + 0.5, blockPos.getZ() + 0.5));
         updatePlayers(level);
         player.start();
         onSongChanged.notifyChange();
