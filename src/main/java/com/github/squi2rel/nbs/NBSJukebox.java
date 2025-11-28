@@ -81,7 +81,8 @@ public final class NBSJukebox extends JavaPlugin implements Listener {
         });
         cmd.setTabCompleter((s, c, l, args) -> {
             String full = String.join(" ", args);
-            return registry.keySet().stream().filter(n -> n.startsWith(full)).toList();
+            int len = full.length();
+            return registry.keySet().stream().filter(n -> n.startsWith(full)).map(n -> n.substring(Math.min(n.length(), len))).toList();
         });
 
         Objects.requireNonNull(getCommand("nbsreload")).setExecutor((s, c, l, args) -> {
